@@ -1,0 +1,97 @@
+---
+- name: Verify supported operating system
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['Archlinux', 'Debian']
+    fail_msg: "This playbook supports Arch Linux and Debian-family systems."
+
+- name: Select runtime packages for Debian
+  ansible.builtin.set_fact:
+    task_api_packages:
+      - python3
+      - python3-venv
+      - python3-pip
+  when: ansible_os_family == 'Debian'
+
+- name: Select runtime packages for Arch Linux
+  ansible.builtin.set_fact:
+    task_api_packages:
+      - python
+      - python-pip
+  when: ansible_os_family == 'Archlinux'
+
+- name: Verify built wheel exists on control machine
+  ansible.builtin.stat:
+    path: "{{ app_wheel_source }}"
+  delegate_to: localhost
+  become: false
+  register: task_api_wheel_stat
+
+- name: Require the built wheel
+  ansible.builtin.assert:
+    that:
+      - task_api_wheel_stat.stat.exists
+    fail_msg: "Build the wheel first using python -m build --wheel."
+
+- name: Install Python runtime packages
+  ansible.builtin.package:
+    name: "{{ task_api_packages }}"
+    state: present
+
+- name: Create service group
+  ansible.builtin.group:
+    name: "{{ app_group }}"
+    system: true
+
+- name: Create service user
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    system: true
+    create_home: false
+    shell: "{{ app_user_shell }}"
+
+- name: Create application directory
+  ansible.builtin.file:
+    path: "{{ app_install_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+
+- name: Copy built application wheel
+  ansible.builtin.copy:
+    src: "{{ app_wheel_source }}"
+    dest: "{{ app_wheel_dest }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+  notify: Restart task-api
+
+- name: Create Python virtual environment
+  ansible.builtin.command:
+    cmd: "python3 -m venv {{ app_install_dir }}/venv"
+    creates: "{{ app_install_dir }}/venv/bin/python"
+
+- name: Install Task API wheel and runtime dependencies
+  ansible.builtin.pip:
+    name: "{{ app_wheel_dest }}"
+    virtualenv: "{{ app_install_dir }}/venv"
+    virtualenv_command: "python3 -m venv"
+  notify: Restart task-api
+
+- name: Install systemd service
+  ansible.builtin.template:
+    src: task-api.service.j2
+    dest: /etc/systemd/system/task-api.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart task-api
+
+- name: Enable and start Task API service
+  ansible.builtin.systemd:
+    name: task-api
+    enabled: true
+    state: started
+    daemon_reload: true

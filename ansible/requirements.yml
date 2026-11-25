@@ -1,0 +1,5 @@
+---
+# No third-party Ansible collections are required; this file is retained so the
+# dependency step is explicit in the setup instructions.
+collections: []
+roles: []

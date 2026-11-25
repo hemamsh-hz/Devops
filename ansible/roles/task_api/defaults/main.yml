@@ -1,0 +1,11 @@
+---
+app_name: task-api
+app_install_dir: /opt/task-api
+app_port: 8000
+app_user: taskapi
+app_group: taskapi
+
+app_wheel_source: "{{ playbook_dir }}/../dist/task_api_assignment-1.0.0-py3-none-any.whl"
+app_wheel_dest: "{{ app_install_dir }}/task_api_assignment-1.0.0-py3-none-any.whl"
+
+app_user_shell: "{{ '/usr/bin/nologin' if ansible_distribution == 'EndeavourOS' or ansible_os_family == 'Archlinux' else '/usr/sbin/nologin' }}"
