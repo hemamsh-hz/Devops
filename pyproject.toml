@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "task-api-assignment"
+version = "1.0.0"
+description = "A small Task Management REST API for a DevOps CI/CD assignment"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["fastapi==0.115.6", "uvicorn[standard]==0.34.0"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
